@@ -50,6 +50,19 @@ WHERE total_rental_amount =
 
 -- 4. the names of films that are not in 'inventory'. A query without the IN operator
 
+SELECT f.film_id, f.title AS film_name
+FROM film f 
+LEFT JOIN inventory i 
+ON f.film_id = i.film_id
+
+EXCEPT
+
+SELECT f.film_id, f.title AS film_name
+FROM film f 
+RIGHT JOIN inventory i 
+ON f.film_id = i.film_id;
+
+
 /* 5. top 3 actors who appeared the most in films in the “Children” category 
 (If several actors have the same number of films, all should be displayed) */
 
