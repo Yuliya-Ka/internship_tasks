@@ -27,8 +27,26 @@ WHERE rank_by_rental_count <=10
 ORDER BY rank_by_rental_count;
 
 
-
 -- 3. the movie category on which the most money was spent
+
+WITH revenue_by_category AS
+	(SELECT c.name AS category, 
+		SUM(p.amount) AS total_rental_amount
+	FROM category c
+	LEFT JOIN film_category fc 
+	ON c.category_id = fc.category_id
+	JOIN inventory i
+	ON fc.film_id = i.film_id
+	JOIN rental r
+	ON i.inventory_id = r.inventory_id
+	JOIN payment p 
+	ON r.rental_id = p.rental_id
+	GROUP BY c.name) 
+SELECT *
+FROM revenue_by_category 
+WHERE total_rental_amount =
+	(SELECT MAX(total_rental_amount) FROM revenue_by_category);
+
 
 -- 4. the names of films that are not in 'inventory'. A query without the IN operator
 
