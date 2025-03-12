@@ -72,6 +72,25 @@ WHERE i.film_id IS NULL;
 /* 5. top 3 actors who appeared the most in films in the “Children” category 
 (If several actors have the same number of films, all should be displayed) */
 
+SELECT *
+FROM (
+	SELECT a.first_name ||' '|| a.last_name AS actor_full_name, 
+		COUNT(*) AS number_of_films_children_category,
+		DENSE_RANK() OVER(ORDER BY COUNT(*) DESC) AS rank_by_number_of_films
+	FROM actor a 
+	JOIN film_actor fa 
+	ON a.actor_id = fa.actor_id
+	JOIN film_category fc 
+	ON fa.film_id = fc.film_id
+	JOIN category c 
+	ON fc.category_id = c.category_id
+	WHERE c.name = 'Children'
+	GROUP BY a.actor_id
+	ORDER BY number_of_films_children_category DESC
+	) AS ranked_actors_by_number_of_films -- in the “Children” category
+WHERE rank_by_number_of_films <=3;
+
+
 /* 6. Cities with the number of active and inactive customers (active — customer.active = 1). 
 Sorted by the number of inactive customers in DESC order */
 
