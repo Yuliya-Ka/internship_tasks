@@ -112,6 +112,26 @@ ORDER BY inactive_customers DESC;
  (customer.address_id in this city), and which begin with the letter “a”.
  The same for cities that have the “-” symbol. One query. */
 
+WITH category_rental AS (
+	SELECT c.city_id, c.city, cat.name AS category, SUM(f.rental_duration) AS total_rental_hours
+	FROM city c
+	JOIN address a ON c.city_id = a.city_id
+	JOIN customer cust ON a.address_id = cust.address_id
+	JOIN rental r ON cust.customer_id = r.customer_id 
+	JOIN inventory i ON r.inventory_id = i.inventory_id
+	JOIN film f ON i.film_id = f.film_id
+	JOIN film_category fc ON f.film_id = fc.film_id
+	JOIN category cat ON fc.category_id = cat.category_id
+	WHERE UPPER(c.city) LIKE 'A%' OR c.city LIKE '%-%'
+	GROUP BY c.city_id, c.city, cat.name
+)
+SELECT *
+FROM (
+    SELECT *,
+           DENSE_RANK() OVER (PARTITION BY city ORDER BY total_rental_hours DESC) AS rank_by_rental_hours -- inside each category
+    FROM category_rental
+) 
+WHERE rank_by_rental_hours = 1	
 
 
 
