@@ -94,6 +94,20 @@ WHERE rank_by_number_of_films <=3;
 /* 6. Cities with the number of active and inactive customers (active — customer.active = 1). 
 Sorted by the number of inactive customers in DESC order */
 
+SELECT 
+	c.city_id, 
+	c.city, 
+	COUNT(CASE WHEN cust.active = 1 THEN 1 END) AS active_customers,
+	COUNT(CASE WHEN cust.active = 0 THEN 1 END) AS inactive_customers
+FROM city c 
+JOIN address a 
+ON c.city_id = a.city_id
+JOIN customer cust 
+ON a.address_id = cust.address_id
+GROUP BY c.city_id
+ORDER BY inactive_customers DESC;
+
+
 /* 7. The category of films that has the largest number of hours of total rental in cities 
  (customer.address_id in this city), and which begin with the letter “a”.
  The same for cities that have the “-” symbol. One query. */
