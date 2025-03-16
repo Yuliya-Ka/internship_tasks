@@ -7,24 +7,24 @@ GROUP BY c.name
 ORDER BY number_of_films DESC;
 
 -- 2. top 10 actors whose films were rented the most, sorted in DESC order
-SELECT *
-FROM (
-	SELECT 
+WITH ranked_actors_by_rental_count AS
+	(SELECT 
 		a.actor_id,
 		a.first_name ||' '|| a.last_name AS actor_full_name,
 		COUNT(r.rental_id) AS rental_count,
 		dense_rank() OVER (ORDER BY COUNT(r.rental_id) DESC) AS rank_by_rental_count -- ranked to prevent losing actors with the same rental_count 
 	FROM actor a
-	JOIN film_actor fa 
+	INNER JOIN film_actor fa 
 	ON a.actor_id = fa.actor_id
-	JOIN inventory i 
+	INNER JOIN inventory i 
 	ON fa.film_id = i.film_id
-	JOIN rental r
+	INNER JOIN rental r
 	ON i.inventory_id = r.inventory_id
-	GROUP BY a.actor_id
-) AS ranked_actors_by_rental_count
+	GROUP BY a.actor_id)
+SELECT *
+FROM ranked_actors_by_rental_count
 WHERE rank_by_rental_count <=10 
-ORDER BY rank_by_rental_count;
+ORDER BY rental_count DESC;
 
 
 -- 3. the movie category on which the most money was spent
@@ -33,13 +33,13 @@ WITH revenue_by_category AS
 	(SELECT c.name AS category, 
 		SUM(p.amount) AS total_rental_amount
 	FROM category c
-	LEFT JOIN film_category fc 
+	INNER JOIN film_category fc 
 	ON c.category_id = fc.category_id
-	JOIN inventory i
+	INNER JOIN inventory i
 	ON fc.film_id = i.film_id
-	JOIN rental r
+	INNER JOIN rental r
 	ON i.inventory_id = r.inventory_id
-	JOIN payment p 
+	INNER JOIN payment p 
 	ON r.rental_id = p.rental_id
 	GROUP BY c.name) 
 SELECT *
@@ -58,7 +58,7 @@ EXCEPT
 
 SELECT i.film_id, f.title AS film_name
 FROM film f 
-JOIN inventory i 
+INNER JOIN inventory i 
 ON f.film_id = i.film_id;
 
 -- 4.2 another solution by checking for null values
@@ -68,26 +68,37 @@ LEFT JOIN inventory i
 ON f.film_id = i.film_id
 WHERE i.film_id IS NULL;
 
+-- 4.3 third solution using NOT EXIST as a type of ANTI SEMI JOIN
+
+SELECT f.film_id, f.title AS film_name
+FROM film f 
+WHERE NOT EXISTS (
+	SELECT i.film_id
+	FROM inventory i 
+	WHERE i.film_id = f.film_id 
+);
+
 
 /* 5. top 3 actors who appeared the most in films in the “Children” category 
 (If several actors have the same number of films, all should be displayed) */
 
-SELECT *
-FROM (
-	SELECT a.first_name ||' '|| a.last_name AS actor_full_name, 
+WITH ranked_actors_by_number_of_films AS 
+	(SELECT a.first_name ||' '|| a.last_name AS actor_full_name, 
 		COUNT(*) AS number_of_films_children_category,
 		DENSE_RANK() OVER(ORDER BY COUNT(*) DESC) AS rank_by_number_of_films
 	FROM actor a 
-	JOIN film_actor fa 
+	INNER JOIN film_actor fa 
 	ON a.actor_id = fa.actor_id
-	JOIN film_category fc 
+	INNER JOIN film_category fc 
 	ON fa.film_id = fc.film_id
-	JOIN category c 
+	INNER JOIN category c 
 	ON fc.category_id = c.category_id
 	WHERE c.name = 'Children'
 	GROUP BY a.actor_id
 	ORDER BY number_of_films_children_category DESC
-	) AS ranked_actors_by_number_of_films -- in the “Children” category
+	)
+SELECT *
+FROM ranked_actors_by_number_of_films -- in the “Children” category
 WHERE rank_by_number_of_films <=3;
 
 
@@ -100,9 +111,9 @@ SELECT
 	COUNT(CASE WHEN cust.active = 1 THEN 1 END) AS active_customers,
 	COUNT(CASE WHEN cust.active = 0 THEN 1 END) AS inactive_customers
 FROM city c 
-JOIN address a 
+INNER JOIN address a 
 ON c.city_id = a.city_id
-JOIN customer cust 
+INNER JOIN customer cust 
 ON a.address_id = cust.address_id
 GROUP BY c.city_id
 ORDER BY inactive_customers DESC;
@@ -115,13 +126,13 @@ ORDER BY inactive_customers DESC;
 WITH category_rental AS (
 	SELECT c.city_id, c.city, cat.name AS category, SUM(f.rental_duration) AS total_rental_hours
 	FROM city c
-	JOIN address a ON c.city_id = a.city_id
-	JOIN customer cust ON a.address_id = cust.address_id
-	JOIN rental r ON cust.customer_id = r.customer_id 
-	JOIN inventory i ON r.inventory_id = i.inventory_id
-	JOIN film f ON i.film_id = f.film_id
-	JOIN film_category fc ON f.film_id = fc.film_id
-	JOIN category cat ON fc.category_id = cat.category_id
+	INNER JOIN address a ON c.city_id = a.city_id
+	INNER JOIN customer cust ON a.address_id = cust.address_id
+	INNER JOIN rental r ON cust.customer_id = r.customer_id 
+	INNER JOIN inventory i ON r.inventory_id = i.inventory_id
+	INNER JOIN film f ON i.film_id = f.film_id
+	INNER JOIN film_category fc ON f.film_id = fc.film_id
+	INNER JOIN category cat ON fc.category_id = cat.category_id
 	WHERE UPPER(c.city) LIKE 'A%' OR c.city LIKE '%-%'
 	GROUP BY c.city_id, c.city, cat.name
 )
