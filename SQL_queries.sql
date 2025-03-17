@@ -124,25 +124,38 @@ ORDER BY inactive_customers DESC;
  The same for cities that have the “-” symbol. One query. */
 
 WITH category_rental AS (
-	SELECT c.city_id, c.city, cat.name AS category, SUM(f.rental_duration) AS total_rental_hours
-	FROM city c
-	INNER JOIN address a ON c.city_id = a.city_id
-	INNER JOIN customer cust ON a.address_id = cust.address_id
-	INNER JOIN rental r ON cust.customer_id = r.customer_id 
-	INNER JOIN inventory i ON r.inventory_id = i.inventory_id
-	INNER JOIN film f ON i.film_id = f.film_id
-	INNER JOIN film_category fc ON f.film_id = fc.film_id
-	INNER JOIN category cat ON fc.category_id = cat.category_id
-	WHERE UPPER(c.city) LIKE 'A%' OR c.city LIKE '%-%'
-	GROUP BY c.city_id, c.city, cat.name
-)
-SELECT *
-FROM (
-    SELECT *,
-           DENSE_RANK() OVER (PARTITION BY city ORDER BY total_rental_hours DESC) AS rank_by_rental_hours -- inside each category
+    SELECT 
+        CASE 
+            WHEN UPPER(c.city) LIKE 'A%' THEN 'cities starting with A'
+            WHEN c.city LIKE '%-%' THEN 'cities with a hyphen in their name'
+        END AS city_group,
+        cat.name AS category,
+        SUM(f.rental_duration) AS total_rental_hours
+    FROM city c
+    INNER JOIN address a ON c.city_id = a.city_id
+    INNER JOIN customer cust ON a.address_id = cust.address_id
+    INNER JOIN rental r ON cust.customer_id = r.customer_id 
+    INNER JOIN inventory i ON r.inventory_id = i.inventory_id
+    INNER JOIN film f ON i.film_id = f.film_id
+    INNER JOIN film_category fc ON f.film_id = fc.film_id
+    INNER JOIN category cat ON fc.category_id = cat.category_id
+    WHERE UPPER(c.city) LIKE 'A%' OR c.city LIKE '%-%'
+    GROUP BY city_group, cat.name
+),
+ranked_categories AS (
+	SELECT *,
+    	DENSE_RANK() OVER (PARTITION BY city_group ORDER BY total_rental_hours DESC) AS rank_by_rental_hours
     FROM category_rental
-) 
-WHERE rank_by_rental_hours = 1	
+)
 
+SELECT 'cities starting with A' AS city_group, category, total_rental_hours
+FROM ranked_categories
+WHERE city_group = 'cities starting with A'
+AND rank_by_rental_hours = 1
 
+UNION ALL
 
+SELECT 'cities with a hyphen in their name' AS city_group, category, total_rental_hours
+FROM ranked_categories
+WHERE city_group = 'cities with a hyphen in their name'
+AND rank_by_rental_hours = 1;
